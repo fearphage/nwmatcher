@@ -236,7 +236,7 @@ NW.Dom = (function(global) {
     'action': 2, 'cite': 2, 'codebase': 2, 'data': 2, 'href': 2,
     'longdesc': 2, 'lowsrc': 2, 'src': 2, 'usemap': 2
   },
-
+  
   // selection functions returning collections
   compiledSelectors = { },
 
@@ -768,7 +768,7 @@ NW.Dom = (function(global) {
   select_qsa =
     function (selector, from, data) {
 
-      data || (data = new Array());
+      data || (data = []);
 
       if (validator.test(selector)) {
         if ((!from || from.nodeType == 9) && !BUGGY_QSAPI.test(selector)) {
@@ -796,7 +796,7 @@ NW.Dom = (function(global) {
 
       var i = 0, done, elements, node, parts, token;
 
-      data || (data = new Array());
+      data || (data = []);
 
       // extract context if changed
       if (!from || lastContext != from) {
@@ -1309,24 +1309,21 @@ NW.Dom = (function(global) {
       }
       cachingEnabled = !!enable;
     },
-
+  
+  // mutation events used to expire cache
+  mutationEvents = {
+    DOMAttrModified: 1,
+    DOMNodeInserted: 1,
+    DOMNodeRemoved: 1
+  },
+  
   // invoked by mutation events to expire cached parts
   mutationWrapper =
     function(event) {
       var d = event.target.ownerDocument || event.target;
       stopMutation(d);
-      switch (event.type) {
-        case 'DOMAttrModified':
-          expireCache(d);
-          break;
-        case 'DOMNodeInserted':
-          expireCache(d);
-          break;
-        case 'DOMNodeRemoved':
-          expireCache(d);
-          break;
-        default:
-          break;
+      if (event.type in mutationEvents) {
+        expireCache(d);
       }
     },
 
@@ -1335,9 +1332,9 @@ NW.Dom = (function(global) {
     function(d) {
       if (!d.isCaching) {
         // FireFox/Opera/Safari/KHTML have support for Mutation Events
-        d.addEventListener('DOMAttrModified', mutationWrapper, false);
-        d.addEventListener('DOMNodeInserted', mutationWrapper, false);
-        d.addEventListener('DOMNodeRemoved', mutationWrapper, false);
+        for (var name in mutationEvents) {
+          d.addEventListener(name, mutationWrapper, false);
+        }
         d.isCaching = true;
       }
     },
@@ -1346,9 +1343,9 @@ NW.Dom = (function(global) {
   stopMutation =
     function(d) {
       if (d.isCaching) {
-        d.removeEventListener('DOMAttrModified', mutationWrapper, false);
-        d.removeEventListener('DOMNodeInserted', mutationWrapper, false);
-        d.removeEventListener('DOMNodeRemoved', mutationWrapper, false);
+        for (var name in mutationEvents) {
+          d.removeEventListener(name, mutationWrapper, false);
+        }
         d.isCaching = false;
       }
     },
